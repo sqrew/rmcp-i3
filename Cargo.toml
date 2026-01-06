@@ -1,0 +1,30 @@
+[package]
+name = "rmcp-i3"
+version = "0.1.0"
+edition = "2021"
+description = "MCP server for i3 window manager control"
+license = "MIT"
+repository = "https://github.com/sqrew/rmcp-i3"
+keywords = ["mcp", "i3", "window-manager", "rust"]
+categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+
+[dependencies]
+rmcp = { version = "0.12", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["full"] }
+tokio-i3ipc = "0.16"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[bin]]
+name = "rmcp-i3"
+path = "src/main.rs"
+
+[lib]
+name = "rmcp_i3"
+path = "src/lib.rs"
