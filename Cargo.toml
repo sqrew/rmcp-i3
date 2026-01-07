@@ -1,6 +1,6 @@
 [package]
 name = "rmcp-i3"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "MCP server for i3 window manager control"
 license = "MIT"
@@ -28,3 +28,9 @@ path = "src/main.rs"
 [lib]
 name = "rmcp_i3"
 path = "src/lib.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

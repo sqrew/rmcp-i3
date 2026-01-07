@@ -385,6 +385,140 @@ impl I3Server {
             ))]))
         }
     }
+
+    /// Get all outputs (monitors)
+    #[rmcp::tool(description = "Get all outputs/monitors with their properties (name, resolution, position, active status)")]
+    pub async fn get_outputs(&self) -> Result<CallToolResult, McpError> {
+        info!("Getting outputs");
+        let mut conn = self.connect().await?;
+
+        let outputs = conn.get_outputs().await.map_err(|e| {
+            error!("Failed to get outputs: {}", e);
+            McpError::internal_error(format!("Failed to get outputs: {}", e), None)
+        })?;
+
+        let json = serde_json::to_string_pretty(&outputs).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize outputs: {}", e), None)
+        })?;
+
+        debug!("Found {} outputs", outputs.len());
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Get all marks
+    #[rmcp::tool(description = "Get all window marks (user-assigned labels for windows)")]
+    pub async fn get_marks(&self) -> Result<CallToolResult, McpError> {
+        info!("Getting marks");
+        let mut conn = self.connect().await?;
+
+        let marks = conn.get_marks().await.map_err(|e| {
+            error!("Failed to get marks: {}", e);
+            McpError::internal_error(format!("Failed to get marks: {}", e), None)
+        })?;
+
+        if marks.0.is_empty() {
+            Ok(CallToolResult::success(vec![Content::text(
+                "No marks defined".to_string()
+            )]))
+        } else {
+            Ok(CallToolResult::success(vec![Content::text(
+                format!("Marks:\n{}", marks.0.join("\n"))
+            )]))
+        }
+    }
+
+    /// Get all binding modes
+    #[rmcp::tool(description = "Get all available binding modes (keyboard shortcut modes)")]
+    pub async fn get_binding_modes(&self) -> Result<CallToolResult, McpError> {
+        info!("Getting binding modes");
+        let mut conn = self.connect().await?;
+
+        let modes = conn.get_binding_modes().await.map_err(|e| {
+            error!("Failed to get binding modes: {}", e);
+            McpError::internal_error(format!("Failed to get binding modes: {}", e), None)
+        })?;
+
+        let json = serde_json::to_string_pretty(&modes).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize binding modes: {}", e), None)
+        })?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Get i3 version info
+    #[rmcp::tool(description = "Get i3 version information")]
+    pub async fn get_version(&self) -> Result<CallToolResult, McpError> {
+        info!("Getting i3 version");
+        let mut conn = self.connect().await?;
+
+        let version = conn.get_version().await.map_err(|e| {
+            error!("Failed to get version: {}", e);
+            McpError::internal_error(format!("Failed to get version: {}", e), None)
+        })?;
+
+        let json = serde_json::to_string_pretty(&version).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize version: {}", e), None)
+        })?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Get scratchpad windows
+    #[rmcp::tool(description = "Get windows currently in the scratchpad")]
+    pub async fn get_scratchpad(&self) -> Result<CallToolResult, McpError> {
+        info!("Getting scratchpad windows");
+        let mut conn = self.connect().await?;
+
+        let tree = conn.get_tree().await.map_err(|e| {
+            error!("Failed to get tree: {}", e);
+            McpError::internal_error(format!("Failed to get tree: {}", e), None)
+        })?;
+
+        // Find scratchpad workspace and list its windows
+        fn find_scratchpad_windows(node: &Node) -> Vec<String> {
+            let mut windows = Vec::new();
+
+            // Check if this is the __i3_scratch workspace
+            if node.name.as_deref() == Some("__i3_scratch") {
+                // Collect all windows in this container
+                fn collect_windows(n: &Node, windows: &mut Vec<String>) {
+                    if let Some(ref name) = n.name {
+                        if n.window.is_some() {
+                            windows.push(format!("{} (id: {})", name, n.id));
+                        }
+                    }
+                    for child in &n.nodes {
+                        collect_windows(child, windows);
+                    }
+                    for child in &n.floating_nodes {
+                        collect_windows(child, windows);
+                    }
+                }
+                collect_windows(node, &mut windows);
+            }
+
+            // Recurse into children
+            for child in &node.nodes {
+                windows.extend(find_scratchpad_windows(child));
+            }
+
+            windows
+        }
+
+        let scratchpad_windows = find_scratchpad_windows(&tree);
+
+        if scratchpad_windows.is_empty() {
+            Ok(CallToolResult::success(vec![Content::text(
+                "Scratchpad is empty".to_string()
+            )]))
+        } else {
+            Ok(CallToolResult::success(vec![Content::text(
+                format!("Scratchpad windows ({}):\n{}",
+                    scratchpad_windows.len(),
+                    scratchpad_windows.join("\n"))
+            )]))
+        }
+    }
 }
 
 // ============================================================================
